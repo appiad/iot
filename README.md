@@ -1,8 +1,8 @@
 # iot
 
-# Non-RPi Stuff
+## Non-RPi Stuff
 PyAudio (use python 3.6): http://people.csail.mit.edu/hubert/pyaudio/
-# Raspberry Pi Install stuff
+## Raspberry Pi Install stuff
 - Install bluetooth stuff on RPi 
   ```
   sudo apt-get install pi-bluetooth 
