@@ -2,6 +2,7 @@
 
 ## Non-RPi Stuff
 PyAudio (use python 3.6): http://people.csail.mit.edu/hubert/pyaudio/
+- Example: https://realpython.com/playing-and-recording-sound-python/#pyaudio
 ## Raspberry Pi Install stuff
 - Install bluetooth stuff on RPi 
   ```
