@@ -24,7 +24,7 @@ MIN_QUEUE_LEN = 15
 
 SLEEP_INTERVAL = .05
 SLEEP_INT_LARGE = .1
-wf = wave.open('../wave_files/a_boogie.wav', 'rb')
+wf = wave.open('wave_files/a_boogie.wav', 'rb')
 
 class ClientServerMsg(IntEnum):
     HALT = auto()
