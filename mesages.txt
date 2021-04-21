@@ -1,0 +1,39 @@
+Messages:
+	- bytes 1-6 are the header.
+		- bytes 1-4 are entire message length (including header), 5-6 are message code
+	- _FORMAT refers to how the data should be struct.packed/struct.unpacked to convert between its byte and numerical representations. It is not sent is message as both sides will know the format. 
+
+	SERVER:
+		- HALT: stop playing and send the duration of time you played for in seconds 
+			- Expects in response: HALT_RSP
+
+		- NEW_STREAM: new song incoming, its parameters for initializing PyAudio are attached in this message
+			- Attached: (byte positions, format to pack/unpack with)
+				- format (bytes 7-10, AUDIO_FORMAT ): 
+				- channels ( 11-12, CHANNEL_FORMAT):
+				- rate ( 13-14, FRAMERATE_FORMAT):
+				- frames_per_buffer (15-16,FPB_FORMAT):
+				- frame_length (17-20, FRAME_LEN_FORMAT):
+			- Expects in response: 
+				- STREAM_REQ once Client ready for data
+
+		- STREAM_RSP: bytes of current stream
+			- Attached: 
+				- 10 frames of stream data concatenated as a bytestring, each individual frame is frame_length long
+			- Expects in response: 
+				- STREAM_REQ when Client needs more data
+
+	CLIENT:
+		- STREAM_REQ: stream more bytes of the song to me
+			- Expects in response: 
+				- Any message, will handle appropriately 
+		- HALT_RSP: acknowldeged HALT request, have stopped, attached is duration 
+			- Attached:
+				- duration (bytes 7-10, DURATION_FORMAT): 
+			- Expects in response: 
+				- nothing 
+
+
+Notes: 
+- Server cannot send 2 messages in a row w/o getting a response otherwise data will be lost. 
+- If the Server needs to send a HALT it must wait until it receives a STREAM_REQ from the Client. (So that the Client's STREAM_REQ and HALT_RSP won't be read together in the socket buffer and be unable to be parsed correctly)  

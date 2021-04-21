@@ -22,8 +22,10 @@ AUDIO_FORMAT = 'I'  # uint32
 CHANNEL_FORMAT = 'H'  # uint16
 FPB_FORMAT = 'H'  # uint16
 FRAMERATE_FORMAT = 'H'  # uint16
+FRAME_LEN_FORMAT = 'I' #uint32
 
-MIN_QUEUE_LEN = 15
+# frames per buffer for PyAudio
+FRAMES_PER_BUFFER = 16384
 
 # sleep time in seconds
 SLEEP_INTERVAL = .05
@@ -43,39 +45,26 @@ class ClientServerMsg(IntEnum):
     STREAM_REQ = auto()
 
 
-# Messages sent between the Client and AudioStream process by setting shared
-# comm_val
-class ClientAudioMsg(IntEnum):
-    # Client sends
-    HALT = auto()
-    NEW_STREAM_INFO = auto()
-    STREAM_READY = auto()
-
-    # AudioStream sends
-    HALT_RSP = auto()
-    WAITING_FOR_STREAM = auto()
-    INACTIVE = auto()
-
-
-# States of the Client
-class ClientState(IntEnum):
-    INACTIVE = auto()
-    ACTIVE = auto()
-
-
-# States of the AudioStream
-class AudioStreamState(IntEnum):
-    PLAYING = auto()
-    NOT_PLAYING = auto()
-    WAITING_FOR_STREAM = auto()
-    NEED_SEND_HALT_RSP = auto()
-    NEED_CLEANUP = auto()
-
 wf = wave.open('wave_files/a_boogie.wav', 'rb')
+py_audio = pyaudio.PyAudio()
 
 def get_data():
-    data = wf.readframes(16384)
+    data = wf.readframes(FRAMES_PER_BUFFER)
     return data
+
+def get_stream_params():
+    """Stream parameters for current stream"""
+    stream_format = py_audio.get_format_from_width(wf.getsampwidth())
+    num_channels = wf.getnchannels()
+    stream_rate = wf.getframerate()
+    stream_frame_len = len(wf.readframes(FRAMES_PER_BUFFER))
+    wf.rewind()
+    return stream_format, num_channels, stream_rate, stream_frame_len
+
+def seconds_to_frame(seconds):
+    """return the number of frames a duration in seconds represents"""
+    # https://stackoverflow.com/questions/18721780/play-a-part-of-a-wav-file-in-python
+    n_frames = int(seconds * wf.getframerate())
 
 def encode_message(msg_code, msg_bytes=b''):
     len_msg = 0 if msg_bytes is None else len(msg_bytes)
@@ -84,22 +73,20 @@ def encode_message(msg_code, msg_bytes=b''):
                       + pack(MSG_CODE_PACKING_FORMAT, msg_code) + msg_bytes
     return encoded_message
 
-# audio, channel, framerate, FPB
-py_audio = pyaudio.PyAudio()
+# audio, channel, framerate, FPB, frame_len
+
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
     sock.bind((host,port))
     print("server listening")
     sock.listen()
     conn, addr = sock.accept()
 
-    form = py_audio.get_format_from_width(wf.getsampwidth())
-    channels = wf.getnchannels()
-    rate = wf.getframerate()
-    frames_per_buffer = 16384
-    msg_b = pack(AUDIO_FORMAT, form) + pack(CHANNEL_FORMAT, channels) + pack(FRAMERATE_FORMAT, rate) \
-       + pack(FPB_FORMAT, frames_per_buffer)
+    # get params of new stream
+    form, channels, rate, frame_len = get_stream_params()
+    msg_bytes = pack(AUDIO_FORMAT, form) + pack(CHANNEL_FORMAT, channels) + pack(FRAMERATE_FORMAT, rate) \
+       + pack(FPB_FORMAT, FRAMES_PER_BUFFER) + pack(FRAME_LEN_FORMAT, frame_len)
     msg_code = ClientServerMsg.NEW_STREAM
-    msg = encode_message(msg_code, msg_b)
+    msg = encode_message(msg_code, msg_bytes)
     conn.sendall(msg)
 
     data = conn.recv(1024)

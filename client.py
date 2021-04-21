@@ -13,7 +13,7 @@ MSG_HEADER_LEN = 6 # 4 bytes (msg length) + 2 bytes (ClientServer.Msg)
 MSG_LEN_PACKING_FORMAT = 'I' # uint32
 MSG_CODE_PACKING_FORMAT = 'H' # uint16, packing format of ClientServerMsg
 
-"""TODO: Add format for frame size and check header still works"""
+# TODO: Add format for frame size and check header still works
 # Packing format of duration (seconds) song has been played for
 DURATION_FORMAT = 'f' # float32
 
@@ -22,6 +22,10 @@ AUDIO_FORMAT = 'I' #uint32
 CHANNEL_FORMAT = 'H' # uint16
 FPB_FORMAT = 'H' #uint16
 FRAMERATE_FORMAT = 'H' #uint16
+FRAME_LEN_FORMAT = 'I' #uint32
+
+# frames per buffer for PyAudio
+FRAMES_PER_BUFFER = 16384
 
 MIN_QUEUE_LEN = 15
 
@@ -31,7 +35,7 @@ SLEEP_INT_LARGE = .1
 
 # Message subject sent between the Client and server through sockets
 class ClientServerMsg(IntEnum):
-    """TODO: Add termination command from Server to terminate processes"""
+    # TODO: Add termination command from Server to terminate processes
     # Server sends
     HALT = auto()
     NEW_STREAM = auto()
@@ -78,7 +82,14 @@ class AudioStream:
         self.state = AudioStreamState.NOT_PLAYING
 
     def create_stream(self,form, channels, rate,frames_per_buffer, stream_callback):
-        """Create PyAudio stream with given parameters"""
+        """
+        Create PyAudio stream with given parameters
+        :param form: Sampling size and format
+        :param channels: Number of channels
+        :param rate: Sampling rate
+        :param frames_per_buffer: Specifies the number of frames per buffer
+        :param stream_callback: Specifies a callback function for non-blocking (callback) operation
+        """
         self.stream =  py_audio.open(format=form,
                                      channels=channels, rate=rate, output=True,
                                      frames_per_buffer=frames_per_buffer,
@@ -110,7 +121,7 @@ class Client:
         """
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((hostname, portname))
-        # set recv calls to raise a socket.timeout after the given interval
+        # set recv calls to raise a socket.timeout exception after the given interval
         self.sock.settimeout(SLEEP_INTERVAL)
         self.byte_buffer = bytearray() # stores raw bytes received from socket communication
         self.comm_queue = comm_queue
@@ -120,7 +131,7 @@ class Client:
         # holds the size of each frame of stream data that is expected in the AudioStream
         # read_callback. Accounts for number of channels and bytes-per-channel
         self.cur_stream_info = {
-            'size': 65536  # change to -1 later
+            'frame_len': -1
         }
 
     def encode_message(self, msg_code, msg_bytes=b''):
@@ -195,12 +206,13 @@ class Client:
     def get_new_stream_params(self):
         """
         Decodes and returns the parameters of the incoming audio stream.
-        :return: audio stream parameters
+        :return: PuAudio stream parameters
         """
         form = unpack(AUDIO_FORMAT,self.byte_buffer[6:10])[0]
         channels = unpack(CHANNEL_FORMAT, self.byte_buffer[10:12])[0]
         rate = unpack(FRAMERATE_FORMAT, self.byte_buffer[12:14])[0]
         frames_per_buffer = unpack(FPB_FORMAT, self.byte_buffer[14:16])[0]
+        self.cur_stream_info['frame_len'] = unpack(FRAME_LEN_FORMAT, self.byte_buffer[16:20])[0]
         return form, channels, rate, frames_per_buffer
 
     def send_new_stream_params(self):
@@ -259,7 +271,7 @@ class Client:
         frames = []
         pos = MSG_HEADER_LEN
         # actual size of each frame of data accounting for # of channels and bytes-per-channel
-        data_size = self.cur_stream_info['size']
+        data_size = self.cur_stream_info['frame_len']
         while pos < len(self.byte_buffer):
             frames.append(bytes(self.byte_buffer[pos:pos+data_size]))
             pos += data_size
@@ -413,9 +425,12 @@ def audio_stream_process(comm_queue, comm_arr, comm_val):
             comm_val.value = ClientAudioMsg.HALT_RSP
 
         else:
-            # If PLAYING then main thread sleeps while PyAudio periodically calls read_callback in a
-            # separate thread when it needs more data .
-            time.sleep(SLEEP_INT_LARGE)
+            if audio_stream.stream is None or not audio_stream.stream.is_active():
+                audio_stream.state = AudioStreamState.NOT_PLAYING
+            else:
+                # If PLAYING then main thread sleeps while PyAudio periodically calls read_callback in a
+                # separate thread when it needs more data .
+                time.sleep(SLEEP_INT_LARGE)
 
 
 def main():
