@@ -13,6 +13,10 @@ Youtube-dl:
   ```
   sudo apt-get install pi-bluetooth 
   ```
+  or 
+  ```
+  sudo apt-get install pi-bluetooth bluez
+  ```
 - bluepy library for getting RSSI through python: https://github.com/IanHarvey/bluepy
   - bluepy programs must be run with ```sudo```
 
