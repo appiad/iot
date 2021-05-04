@@ -1,7 +1,7 @@
 Messages:
 	- bytes 1-6 are the header.
 		- bytes 1-4 are entire message length (including header), 5-6 are message code
-	- _FORMAT refers to how the data should be struct.packed/struct.unpacked to convert between its byte and numerical representations. It is not sent is message as both sides will know the format. 
+	- _FORMAT refers to how the data should be struct.packed/struct.unpacked (with the Python struct library) to convert between its byte and numerical representations. It is not sent in the message as both client and server will know the format. 
 
 	SERVER:
 		- HALT: stop playing and send the duration of time you played for in seconds 
@@ -24,7 +24,7 @@ Messages:
 				- STREAM_REQ when Client needs more data
 
 	CLIENT:
-		- STREAM_REQ: stream more bytes of the song to me
+		- STREAM_REQ: stream more frames of the song to me
 			- Expects in response: 
 				- Any message, will handle appropriately 
 		- HALT_RSP: acknowldeged HALT request, have stopped, attached is duration 
