@@ -1,6 +1,6 @@
 # Location based audio streaming
 
-## Client-side installs
+## Client installs
 PyAudio (use python 3.6): http://people.csail.mit.edu/hubert/pyaudio/
 - Example: https://realpython.com/playing-and-recording-sound-python/#pyaudio
 - Docs: https://people.csail.mit.edu/hubert/pyaudio/docs/
@@ -23,4 +23,4 @@ PyAudio (use python 3.6): http://people.csail.mit.edu/hubert/pyaudio/
   sudo btmgmt find
   ```
   
-  ## Running the system
+## Running the system
